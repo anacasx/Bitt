@@ -1,153 +1,105 @@
 package com.pixti.bitt;
 
-import android.Manifest;
-import android.content.pm.PackageManager;
-import android.hardware.camera2.CameraAccessException;
-import android.hardware.camera2.CameraCaptureSession;
-import android.hardware.camera2.CameraDevice;
-import android.hardware.camera2.CameraManager;
-import android.hardware.camera2.CaptureRequest;
-import android.os.Bundle;
-import android.util.Log;
-import android.view.Surface;
-import android.view.TextureView;
-import android.view.View;
-import android.widget.Toast;
-
-import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
 
-import java.util.Arrays;
+import android.Manifest;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.media.ThumbnailUtils;
+import android.os.Bundle;
+import android.provider.MediaStore;
+import android.view.View;
+import android.widget.Button;
+import android.widget.ImageView;
+import android.widget.TextView;
+
+import com.pixti.bitt.ml.ModelUnquant;
+
+import org.tensorflow.lite.DataType;
+import org.tensorflow.lite.support.tensorbuffer.TensorBuffer;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 public class MainActivity extends AppCompatActivity {
-    private static final int REQUEST_CAMERA_PERMISSION = 200;
-    private TextureView textureView;
-    private CameraDevice cameraDevice;
-    private CameraCaptureSession cameraCaptureSessions;
-    private CaptureRequest.Builder captureRequestBuilder;
-    private CameraManager cameraManager;
-    private String cameraId;
+
+    TextView result, confidence;
+    ImageView imageView;
+    Button picture;
+    int imageSize = 224;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        textureView = findViewById(R.id.textureView);
 
-        textureView.setSurfaceTextureListener(textureListener);
-        cameraManager = (CameraManager) getSystemService(CAMERA_SERVICE);
-    }
+        result = findViewById(R.id.result);
+        confidence = findViewById(R.id.confidence);
+        imageView = findViewById(R.id.imageView);
+        picture = findViewById(R.id.button);
 
-    private final TextureView.SurfaceTextureListener textureListener = new TextureView.SurfaceTextureListener() {
-        @Override
-        public void onSurfaceTextureAvailable(android.graphics.SurfaceTexture surface, int width, int height) {
-            openCamera();
-        }
-
-        @Override
-        public void onSurfaceTextureSizeChanged(android.graphics.SurfaceTexture surface, int width, int height) {}
-
-        @Override
-        public boolean onSurfaceTextureDestroyed(android.graphics.SurfaceTexture surface) {
-            return false;
-        }
-
-        @Override
-        public void onSurfaceTextureUpdated(android.graphics.SurfaceTexture surface) {}
-    };
-
-    private void openCamera() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA}, REQUEST_CAMERA_PERMISSION);
-            return;
-        }
-        try {
-            cameraId = cameraManager.getCameraIdList()[0];
-            cameraManager.openCamera(cameraId, stateCallback, null);
-        } catch (CameraAccessException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private final CameraDevice.StateCallback stateCallback = new CameraDevice.StateCallback() {
-        @Override
-        public void onOpened(@NonNull CameraDevice camera) {
-            cameraDevice = camera;
-            createCameraPreview();
-        }
-
-        @Override
-        public void onDisconnected(@NonNull CameraDevice camera) {
-            cameraDevice.close();
-        }
-
-        @Override
-        public void onError(@NonNull CameraDevice camera, int error) {
-            cameraDevice.close();
-            cameraDevice = null;
-        }
-    };
-
-    private void createCameraPreview() {
-        try {
-            android.graphics.SurfaceTexture texture = textureView.getSurfaceTexture();
-            assert texture != null;
-            texture.setDefaultBufferSize(textureView.getWidth(), textureView.getHeight());
-            Surface surface = new Surface(texture);
-            captureRequestBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
-            captureRequestBuilder.addTarget(surface);
-
-            cameraDevice.createCaptureSession(Arrays.asList(surface), new CameraCaptureSession.StateCallback() {
-                @Override
-                public void onConfigured(@NonNull CameraCaptureSession cameraCaptureSession) {
-                    if (cameraDevice == null) return;
-                    cameraCaptureSessions = cameraCaptureSession;
-                    updatePreview();
+        picture.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // Launch camera if we have permission
+                if (checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                    Intent cameraIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                    startActivityForResult(cameraIntent, 1);
+                } else {
+                    //Request camera permission if we don't have it.
+                    requestPermissions(new String[]{Manifest.permission.CAMERA}, 100);
                 }
-
-                @Override
-                public void onConfigureFailed(@NonNull CameraCaptureSession cameraCaptureSession) {
-                    Toast.makeText(MainActivity.this, "Configuration change", Toast.LENGTH_SHORT).show();
-                }
-            }, null);
-        } catch (CameraAccessException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void updatePreview() {
-        if (cameraDevice == null) {
-            Log.e("MainActivity", "Update preview error, return");
-        }
-        captureRequestBuilder.set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_AUTO);
-        try {
-            cameraCaptureSessions.setRepeatingRequest(captureRequestBuilder.build(), null, null);
-        } catch (CameraAccessException e) {
-            e.printStackTrace();
-        }
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);  // Llamar al método base
-
-        if (requestCode == REQUEST_CAMERA_PERMISSION) {
-            if (grantResults[0] == PackageManager.PERMISSION_DENIED) {
-                Toast.makeText(this, "Sorry!!!, you can't use this app without granting permission", Toast.LENGTH_LONG).show();
-                finish();
-            } else {
-                openCamera();
             }
+        });
+    }
+
+    public void classifyImage(Bitmap image){
+        try {
+            ModelUnquant model = ModelUnquant.newInstance(getApplicationContext());
+
+            // Creates inputs for reference.
+            TensorBuffer inputFeature0 = TensorBuffer.createFixedSize(new int[]{1, 224, 224, 3}, DataType.FLOAT32);
+            ByteBuffer byteBuffer = ByteBuffer.allocateDirect(4 * imageSize * imageSize * 3);
+            byteBuffer.order (ByteOrder.nativeOrder());
+            int [] intValues = new int [imageSize * imageSize];
+            image.getPixels(intValues, 0, image.getWidth(), 0, 0, image.getWidth(), image.getHeight());
+            int pixel = 0;
+            for(int i = 0; i < imageSize; i++) {
+                for (int j = 0; i < imageSize; j++) {
+                    int val = intValues[pixel++]; // RGB
+                    byteBuffer.putFloat(((val >> 16) & 0xFF) * (1.f / 255.f));
+                    byteBuffer.putFloat(((val >> 8) & 0xFF) * (1.f / 255.f));
+                    byteBuffer.putFloat((val & 0xFF) * (1.f / 255.f));
+                }
+            }
+
+            inputFeature0.loadBuffer(byteBuffer);
+
+            // Runs model inference and gets result.
+            ModelUnquant.Outputs outputs = model.process(inputFeature0);
+            TensorBuffer outputFeature0 = outputs.getOutputFeature0AsTensorBuffer();
+
+            // Releases model resources if no longer used.
+            model.close();
+        } catch (IOException e) {
+            // TODO Handle the exception
         }
     }
 
     @Override
-    protected void onPause() {
-        if (cameraDevice != null) {
-            cameraDevice.close();
+    public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        if (requestCode == 1 && resultCode == RESULT_OK) {
+            Bitmap image = (Bitmap) data.getExtras().get("data");
+            int dimension = Math.min(image.getWidth(), image.getHeight());
+            image = ThumbnailUtils.extractThumbnail(image, dimension, dimension);
+            imageView.setImageBitmap(image);
+
+            image = Bitmap.createScaledBitmap(image, imageSize, imageSize, false);
+            classifyImage(image);
         }
-        super.onPause();
+        super.onActivityResult(requestCode, resultCode, data);
     }
 }
