@@ -13,7 +13,11 @@ import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CaptureRequest;
+import android.media.MediaPlayer;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.speech.tts.TextToSpeech;
 import android.util.Log;
 import android.view.Surface;
 import android.view.TextureView;
@@ -32,8 +36,9 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
+import java.util.Locale;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements TextToSpeech.OnInitListener {
     private static final int REQUEST_CAMERA_PERMISSION = 200;
     private TextureView textureView;
     private TextView result, confidence;
@@ -41,6 +46,17 @@ public class MainActivity extends AppCompatActivity {
     private CameraDevice cameraDevice;
     private CameraCaptureSession cameraCaptureSessions;
     private CaptureRequest.Builder captureRequestBuilder;
+
+    private String lastResult = "0";
+    private float lastConfidence = 0.0f;
+    private long lastDetectionTime = 0;
+    private final long resetInterval = 30000; // 30 segundos
+    private Handler handler;
+
+    private MediaPlayer scanningMediaPlayer;
+    private MediaPlayer recognizedMediaPlayer;
+
+    private TextToSpeech textToSpeech;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,6 +68,13 @@ public class MainActivity extends AppCompatActivity {
         confidence = findViewById(R.id.confidence);
         textureView = findViewById(R.id.textureView);
 
+        // Inicializa los MediaPlayer
+        scanningMediaPlayer = MediaPlayer.create(this, R.raw.scanning_sound);
+        recognizedMediaPlayer = MediaPlayer.create(this, R.raw.recognized_sound);
+
+        // Inicializa TextToSpeech
+        textToSpeech = new TextToSpeech(this, this);
+
         // Establece el listener para el TextureView
         textureView.setSurfaceTextureListener(textureListener);
 
@@ -59,7 +82,23 @@ public class MainActivity extends AppCompatActivity {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA}, REQUEST_CAMERA_PERMISSION);
         }
+
+        handler = new Handler(Looper.getMainLooper());
+
+        // Programa la reproducción del sonido de escaneo
+        handler.postDelayed(scanningSoundRunnable, 1000); // Inicia en 1 segundo
     }
+
+    // Runnable para reproducir el sonido de escaneo a intervalos regulares
+    private final Runnable scanningSoundRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (!scanningMediaPlayer.isPlaying()) {
+                scanningMediaPlayer.start();
+            }
+            handler.postDelayed(this, 2000); // Repite cada 2 segundos
+        }
+    };
 
     // Listener para el TextureView
     private final TextureView.SurfaceTextureListener textureListener = new TextureView.SurfaceTextureListener() {
@@ -129,6 +168,9 @@ public class MainActivity extends AppCompatActivity {
             Surface surface = new Surface(texture);
             captureRequestBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
             captureRequestBuilder.addTarget(surface);
+
+            // Configura el flash siempre encendido
+            captureRequestBuilder.set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_TORCH);
 
             cameraDevice.createCaptureSession(Arrays.asList(surface), new CameraCaptureSession.StateCallback() {
                 @Override
@@ -201,16 +243,21 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
 
-            String[] classes = {"20-a","20-b","50-a","50-b","100-a","100-b","200-a","200-b","500-a","500-b","1000"}; // Clases de tu modelo
+            String[] classes = {"20aa", "20ar", "20ba", "20br", "50aa", "50ar", "50ba", "50br", "100aa", "100ar", "100ba", "100br", "200aa", "200ar", "200ba", "200br", "500aa", "500ar", "500ba", "500br", "1000a", "1000r"}; // Clases de tu modelo
             float confidenceThreshold = 0.9f; // Umbral de confianza
 
             // Asigna la clase o '0' si no se supera el umbral de confianza
             if (maxConfidence > confidenceThreshold) {
-                result.setText(classes[maxPos]);
-                confidence.setText(String.format("%.2f%%", maxConfidence * 100));
-            } else {
-                result.setText("0");
-                confidence.setText("0.00%");
+                lastResult = classes[maxPos];
+                lastConfidence = maxConfidence;
+                lastDetectionTime = System.currentTimeMillis();
+                updateUI();
+                resetAfterInterval();
+                // Reproduce el sonido de reconocimiento
+                scanningMediaPlayer.pause();
+                recognizedMediaPlayer.start();
+                // Lee el resultado en voz alta
+                speakOut(lastResult);
             }
 
             model.close();
@@ -218,6 +265,30 @@ public class MainActivity extends AppCompatActivity {
             // Manejar la excepción
         }
     }
+
+    // Actualiza la interfaz de usuario
+    private void updateUI() {
+        result.setText(lastResult);
+        confidence.setText(String.format("%.2f%%", lastConfidence * 100));
+    }
+
+    // Restablece los valores después del intervalo
+    private void resetAfterInterval() {
+        handler.removeCallbacks(resetRunnable);
+        handler.postDelayed(resetRunnable, resetInterval);
+    }
+
+    private final Runnable resetRunnable = new Runnable() {
+        @Override
+        public void run() {
+            long currentTime = System.currentTimeMillis();
+            if (currentTime - lastDetectionTime >= resetInterval) {
+                lastResult = "0";
+                lastConfidence = 0.0f;
+                updateUI();
+            }
+        }
+    };
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
@@ -228,6 +299,37 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 openCamera();
             }
+        }
+    }
+
+    @Override
+    public void onInit(int status) {
+        if (status == TextToSpeech.SUCCESS) {
+            int result = textToSpeech.setLanguage(new Locale("es", "MX"));
+            if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                Log.e("MainActivity", "Este Lenguaje no está soportado");
+            }
+        } else {
+            Log.e("MainActivity", "Falló la inicialización de TextToSpeech");
+        }
+    }
+
+    private void speakOut(String text) {
+        textToSpeech.speak(text, TextToSpeech.QUEUE_FLUSH, null, null);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (scanningMediaPlayer != null) {
+            scanningMediaPlayer.release();
+        }
+        if (recognizedMediaPlayer != null) {
+            recognizedMediaPlayer.release();
+        }
+        if (textToSpeech != null) {
+            textToSpeech.stop();
+            textToSpeech.shutdown();
         }
     }
 }
