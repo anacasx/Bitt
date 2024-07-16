@@ -5,6 +5,8 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.Manifest;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.SurfaceTexture;
@@ -21,6 +23,8 @@ import android.speech.tts.TextToSpeech;
 import android.util.Log;
 import android.view.Surface;
 import android.view.TextureView;
+import android.view.View;
+import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -61,6 +65,8 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
     private long recognitionStartTime = 0;
     private boolean isRecognized = false;
 
+    private SharedPreferences preferences;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -70,6 +76,7 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
         result = findViewById(R.id.result);
         confidence = findViewById(R.id.confidence);
         textureView = findViewById(R.id.textureView);
+        ImageButton settingsButton = findViewById(R.id.settings_button);
 
         // Inicializa los MediaPlayer
         scanningMediaPlayer = MediaPlayer.create(this, R.raw.scanning_sound);
@@ -90,6 +97,37 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
 
         // Programa la reproducción del sonido de escaneo
         handler.postDelayed(scanningSoundRunnable, 1000); // Inicia en 1 segundo
+
+        // Establece el listener para el botón de configuración
+        settingsButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
+                startActivity(intent);
+            }
+        });
+
+        preferences = getSharedPreferences("AppPreferences", MODE_PRIVATE);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Carga las preferencias y ajusta según sea necesario
+        boolean soundsEnabled = preferences.getBoolean("soundsEnabled", true);
+        boolean flashEnabled = preferences.getBoolean("flashEnabled", true);
+
+        if (!soundsEnabled) {
+            scanningMediaPlayer.setVolume(0, 0);
+            recognizedMediaPlayer.setVolume(0, 0);
+        } else {
+            scanningMediaPlayer.setVolume(1, 1);
+            recognizedMediaPlayer.setVolume(1, 1);
+        }
+
+        if (cameraDevice != null) {
+            createCameraPreview(); // Actualiza la vista previa de la cámara
+        }
     }
 
     // Runnable para reproducir el sonido de escaneo a intervalos regulares
@@ -99,7 +137,7 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
             if (!scanningMediaPlayer.isPlaying()) {
                 scanningMediaPlayer.start();
             }
-            handler.postDelayed(this, 2000); // Repite cada 2 segundos
+            handler.postDelayed(this, 1500); // Repite cada 1.5 segundos
         }
     };
 
@@ -172,9 +210,14 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
             captureRequestBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
             captureRequestBuilder.addTarget(surface);
 
-            // Configura el flash siempre encendido
-            captureRequestBuilder.set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_TORCH);
-
+            // Configura el flash según la preferencia
+            boolean flashEnabled = preferences.getBoolean("flashEnabled", true);
+            if (flashEnabled) {
+                captureRequestBuilder.set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_TORCH);
+                captureRequestBuilder.set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_TORCH);
+            } else {
+                captureRequestBuilder.set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_OFF);
+            }
             cameraDevice.createCaptureSession(Arrays.asList(surface), new CameraCaptureSession.StateCallback() {
                 @Override
                 public void onConfigured(@NonNull CameraCaptureSession cameraCaptureSession) {
@@ -246,7 +289,14 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
                 }
             }
 
-            String[] classes = {"20aa", "20ar", "20ba", "20br", "50aa", "50ar", "50ba", "50br", "100aa", "100ar", "100ba", "100br", "200aa", "200ar", "200ba", "200br", "500aa", "500ar", "500ba", "500br", "1000ba", "1000br"}; // Clases de tu modelo
+            //String[] classes = {"20aa", "20ar", "20ba", "20br", "50aa", "50ar", "50ba", "50br", "100aa", "100ar", "100ba", "100br", "200aa", "200ar", "200ba", "200br", "500aa", "500ar", "500ba", "500br", "1000ba", "1000br"}; // Clases de tu modelo
+            //Clase nueva
+            String[] classes = {"20ba", "20br", "50ba", "50br", "100ba", "100br", "200ba", "200br","500ba", "500br", "1000ba", "1000br"}; // Clases de tu modelo
+
+
+
+
+
             float confidenceThreshold = 0.99f; // Umbral de confianza
 
             // Verifica si la confianza es mayor al umbral y el resultado se mantiene durante 2 segundos
