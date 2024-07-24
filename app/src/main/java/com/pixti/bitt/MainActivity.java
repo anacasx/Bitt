@@ -294,33 +294,17 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
 
             String[] classes = {"20-a", "20-b", "50-a", "50-b", "100-a", "100-b", "200-a", "200-b", "500-a", "500-b", "1000"}; // Clases de tu modelo
 
-
-
-
-            float confidenceThreshold = 0.99f; // Umbral de confianza
-
-            // Verifica si la confianza es mayor al umbral y el resultado se mantiene durante 2 segundos
-            if (maxConfidence >= confidenceThreshold) {
-                if (!isRecognized) {
-                    isRecognized = true;
-                    recognitionStartTime = System.currentTimeMillis();
-                } else if (System.currentTimeMillis() - recognitionStartTime >= 2000) {
-                    lastResult = classes[maxPos];
-                    //lastResult = convertClassToValue(classes[maxPos]);
-                    lastConfidence = maxConfidence;
-                    lastDetectionTime = System.currentTimeMillis();
-                    updateUI();
-                    resetAfterInterval();
-                    // Reproduce el sonido de reconocimiento
-                    scanningMediaPlayer.pause();
-                    recognizedMediaPlayer.start();
-                    // Lee el resultado en voz alta
-                    speakOut(lastResult);
-                    isRecognized = false; // Resetea el flag después de reconocimiento
-                }
-            } else {
-                isRecognized = false;
-            }
+            // Elimina la verificación del umbral de confianza
+            lastResult = classes[maxPos];
+            lastConfidence = maxConfidence;
+            lastDetectionTime = System.currentTimeMillis();
+            updateUI();
+            resetAfterInterval();
+            // Reproduce el sonido de reconocimiento
+            scanningMediaPlayer.pause();
+            recognizedMediaPlayer.start();
+            // Lee el resultado en voz alta
+            speakOut(lastResult);
 
             model.close();
         } catch (IOException e) {
