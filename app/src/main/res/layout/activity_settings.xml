@@ -4,6 +4,7 @@
     android:layout_height="match_parent"
     android:padding="16dp">
 
+    <!-- Botón de regreso -->
     <ImageButton
         android:id="@+id/back_button"
         android:layout_width="wrap_content"
@@ -13,6 +14,7 @@
         android:layout_alignParentStart="true"
         android:layout_marginTop="16dp" />
 
+    <!-- Título de Preferencias -->
     <TextView
         android:id="@+id/preferences_header"
         android:layout_width="wrap_content"
@@ -23,19 +25,36 @@
         android:layout_centerHorizontal="true"
         android:layout_marginTop="16dp" />
 
+    <!-- Switch para Notificación de Audio -->
     <Switch
         android:id="@+id/switch_sounds"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Habilitar Sonidos"
+        android:text="Notificación de audio"
         android:layout_below="@id/preferences_header"
-        android:layout_marginTop="32dp" />
+        android:layout_marginTop="32dp"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp" />
 
+    <!-- Switch para Lector
+    <Switch
+        android:id="@+id/switch_reader"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Lector"
+        android:layout_below="@id/switch_sounds"
+        android:layout_marginTop="16dp"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp" />-->
+
+    <!-- Switch para Flash -->
     <Switch
         android:id="@+id/switch_flash"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Habilitar Flash"
+        android:text="Flash"
         android:layout_below="@id/switch_sounds"
-        android:layout_marginTop="16dp" />
+        android:layout_marginTop="16dp"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp" />
 </RelativeLayout>
