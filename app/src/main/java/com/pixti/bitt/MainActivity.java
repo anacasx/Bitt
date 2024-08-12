@@ -1,3 +1,21 @@
+/**
+ * Nombre de la Clase: MainActivity
+ *
+ * Autor: Xóchitl Cabañas (gh:@anacasx)
+ * Fecha: Junio 2024
+ *
+ * Descripción:
+ * Esta actividad es la principal de la aplicación. Se encarga de capturar imágenes
+ * utilizando la cámara del dispositivo, clasificarlas mediante un modelo de TensorFlow Lite,
+ * y mostrar el resultado en pantalla. Además, incluye funcionalidades de reconocimiento
+ * de voz y sonido, manejo de preferencias del usuario para el uso del flash y reproducción
+ * de sonidos.
+ *
+ * Notas adicionales:
+ * - Este archivo es parte del paquete com.pixti.bitt.
+ */
+
+
 package com.pixti.bitt;
 
 import androidx.annotation.NonNull;
@@ -42,29 +60,41 @@ import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.Locale;
 
+/**
+ * Clase principal de la actividad que maneja la cámara, realiza la clasificación de imágenes
+ * utilizando un modelo de machine learning y actualiza la interfaz de usuario.
+ */
 public class MainActivity extends AppCompatActivity implements TextToSpeech.OnInitListener {
+    // Constante para la solicitud de permiso de cámara
     private static final int REQUEST_CAMERA_PERMISSION = 200;
+    // Elementos de la interfaz de usuario
     private TextureView textureView;
     private TextView result, confidence;
     private int imageSize = 224;
+    // Componentes de la cámara
     private CameraDevice cameraDevice;
     private CameraCaptureSession cameraCaptureSessions;
     private CaptureRequest.Builder captureRequestBuilder;
 
+    // Variables para el manejo de resultados
     private String lastResult = "0";
     private float lastConfidence = 0.0f;
     private long lastDetectionTime = 0;
     private final long resetInterval = 30000; // 30 segundos
     private Handler handler;
 
+    // Reproductores de sonido
     private MediaPlayer scanningMediaPlayer;
     private MediaPlayer recognizedMediaPlayer;
 
+    // Texto a voz
     private TextToSpeech textToSpeech;
 
+    // Variables para el reconocimiento
     private long recognitionStartTime = 0;
     private boolean isRecognized = false;
 
+    // Preferencias compartidas
     private SharedPreferences preferences;
 
     @Override
@@ -78,7 +108,7 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
         textureView = findViewById(R.id.textureView);
         ImageButton settingsButton = findViewById(R.id.settings_button);
 
-        // Inicializa los MediaPlayer
+        // Inicializa los reproductores de sonido
         scanningMediaPlayer = MediaPlayer.create(this, R.raw.scanning_sound);
         recognizedMediaPlayer = MediaPlayer.create(this, R.raw.recognized_sound);
 
@@ -107,6 +137,7 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
             }
         });
 
+        // Carga las preferencias compartidas
         preferences = getSharedPreferences("AppPreferences", MODE_PRIVATE);
     }
 
@@ -130,7 +161,9 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
         }
     }
 
-    // Runnable para reproducir el sonido de escaneo a intervalos regulares
+    /**
+     * Runnable para reproducir el sonido de escaneo a intervalos regulares.
+     */
     private final Runnable scanningSoundRunnable = new Runnable() {
         @Override
         public void run() {
@@ -141,7 +174,9 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
         }
     };
 
-    // Listener para el TextureView
+    /**
+     * Listener para el TextureView que maneja los eventos del SurfaceTexture.
+     */
     private final TextureView.SurfaceTextureListener textureListener = new TextureView.SurfaceTextureListener() {
         @Override
         public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
@@ -165,7 +200,9 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
         }
     };
 
-    // Abre la cámara
+    /**
+     * Abre la cámara y prepara la vista previa.
+     */
     private void openCamera() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA}, REQUEST_CAMERA_PERMISSION);
@@ -180,7 +217,9 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
         }
     }
 
-    // Callback para el estado de la cámara
+    /**
+     * Callback para el estado de la cámara.
+     */
     private final CameraDevice.StateCallback stateCallback = new CameraDevice.StateCallback() {
         @Override
         public void onOpened(@NonNull CameraDevice camera) {
@@ -200,7 +239,9 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
         }
     };
 
-    // Crea la vista previa de la cámara
+    /**
+     * Crea la vista previa de la cámara y configura el flash según las preferencias del usuario.
+     */
     private void createCameraPreview() {
         try {
             SurfaceTexture texture = textureView.getSurfaceTexture();
@@ -236,7 +277,9 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
         }
     }
 
-    // Actualiza la vista previa de la cámara
+    /**
+     * Actualiza la vista previa de la cámara.
+     */
     private void updatePreview() {
         if (cameraDevice == null) {
             Log.e("MainActivity", "Update preview error, return");
@@ -249,9 +292,13 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
         }
     }
 
-    // Clasifica la imagen capturada
+    /**
+     * Clasifica la imagen capturada utilizando un modelo de machine learning.
+     * @param image El bitmap de la imagen capturada.
+     */
     public void classifyImage(Bitmap image) {
         try {
+            // Carga el modelo TFLite
             ModelUnquant model = ModelUnquant.newInstance(getApplicationContext());
 
             // Prepara la entrada del modelo
@@ -261,10 +308,11 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
 
             int[] intValues = new int[imageSize * imageSize];
             image.getPixels(intValues, 0, image.getWidth(), 0, 0, image.getWidth(), image.getHeight());
+
             int pixel = 0;
             for (int i = 0; i < imageSize; i++) {
                 for (int j = 0; j < imageSize; j++) {
-                    int val = intValues[pixel++];
+                    int val = intValues[pixel++]; //RGB
                     byteBuffer.putFloat(((val >> 16) & 0xFF) * (1.f / 255.f));
                     byteBuffer.putFloat(((val >> 8) & 0xFF) * (1.f / 255.f));
                     byteBuffer.putFloat((val & 0xFF) * (1.f / 255.f));
@@ -289,11 +337,16 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
                 }
             }
 
-            //String[] classes = {"20aa", "20ar", "20ba", "20br", "50aa", "50ar", "50ba", "50br", "100aa", "100ar", "100ba", "100br", "200aa", "200ar", "200ba", "200br", "500aa", "500ar", "500ba", "500br", "1000ba", "1000br"}; // Clases de tu modelo
-            //Clase nueva
-            //String[] classes = {"20ba", "20br", "50ba", "50br", "100ba", "100br", "200ba", "200br","500ba", "500br", "1000ba", "1000br"}; // Clases de tu modelo
+            // Asigna etiquetas a cada clase (ejemplo)
             String[] classes = {
-                    "200aa", "200ar", "200ba", "200br"
+                    "0 20ar",
+                            "1 20aa",
+                            "2 20br",
+                            "3 20ba",
+                            "4 50br",
+                            "5 500ba",
+                            "6 500br",
+                            "7 50ba"
             };
 
 
@@ -328,6 +381,7 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
             model.close();
         } catch (IOException e) {
             // Manejar la excepción
+            e.printStackTrace();
         }
     }
 
@@ -335,32 +389,32 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
 
     private String convertClassToValue(String detectedClass) {
         switch (detectedClass) {
-            /*case "20aa":
+            case "20aa":
             case "20ar":
             case "20ba":
             case "20br":
                 return "20 pesos";
-            case "50aa":
-            case "50ar":
+            /*case "50aa":
+            case "50ar":*/
             case "50ba":
             case "50br":
                 return "50 pesos";
-            case "100aa":
+            /*case "100aa":
             case "100ar":
             case "100ba":
             case "100br":
-                return "100 pesos";*/
+                return "100 pesos";
             case "200aa":
             case "200ar":
             case "200ba":
             case "200br":
-                return "200 pesos";/*
+                return "200 pesos";
             case "500aa":
-            case "500ar":
+            case "500ar":*/
             case "500ba":
             case "500br":
                 return "500 pesos";
-            case "1000ba":
+            /*case "1000ba":
             case "1000br":
                 return "1000 pesos";*/
             default:
