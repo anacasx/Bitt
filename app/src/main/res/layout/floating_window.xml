@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Este archivo define el layout para una ventana emergente (floating window) en la aplicación.
+    La ventana se compone de un LinearLayout con un TextView que muestra un mensaje y un botón
+    que permite al usuario continuar con la acción.
+-->
+
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <!--
+        TextView que muestra el mensaje de instrucciones al usuario.
+        - El texto indica cómo utilizar la aplicación.
+        - La fuente del texto tiene un tamaño de 18sp y es de color negro.
+        - El texto está centrado y tiene un padding inferior para separar visualmente el botón.
+    -->
+    <TextView
+        android:id="@+id/floating_message"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Para usar la aplicación, coloca el billete frente a la cámara.\n\nPara continuar, presiona en cualquier lugar de la pantalla."
+        android:textSize="18sp"
+        android:textColor="@android:color/black"
+        android:gravity="center"
+        android:paddingBottom="20dp"/>
+
+    <!--
+        Botón que permite al usuario continuar con la acción.
+        - El botón está centrado horizontalmente dentro del layout.
+    -->
+    <Button
+        android:id="@+id/continue_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Continuar"
+        android:layout_gravity="center"/>
+</LinearLayout>

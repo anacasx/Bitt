@@ -60,6 +60,9 @@ import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.Locale;
 
+import android.app.Dialog;
+import android.widget.Button;
+
 /**
  * Clase principal de la actividad que maneja la cámara, realiza la clasificación de imágenes
  * utilizando un modelo de machine learning y actualiza la interfaz de usuario.
@@ -107,6 +110,7 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
         confidence = findViewById(R.id.confidence);
         textureView = findViewById(R.id.textureView);
         ImageButton settingsButton = findViewById(R.id.settings_button);
+        ImageButton newIconButton = findViewById(R.id.info_button);
 
         // Inicializa los reproductores de sonido
         scanningMediaPlayer = MediaPlayer.create(this, R.raw.scanning_sound);
@@ -137,8 +141,44 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
             }
         });
 
+        newIconButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showDialog();
+            }
+        });
+
         // Carga las preferencias compartidas
         preferences = getSharedPreferences("AppPreferences", MODE_PRIVATE);
+    }
+
+
+    private void showFloatingWindow() {
+        // Crear y mostrar el diálogo
+        final Dialog dialog = new Dialog(this);
+        dialog.setContentView(R.layout.floating_window); // Asumimos que el layout de la ventana flotante se llama "floating_window"
+        dialog.setCancelable(false);  // Evita que el usuario lo cierre tocando fuera de la ventana
+
+        // Configurar el botón de continuar
+        Button continueButton = dialog.findViewById(R.id.continue_button);
+        continueButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                dialog.dismiss();  // Cerrar el diálogo
+                startScanningProcess();  // Continuar con el proceso de la aplicación
+            }
+        });
+
+        // Mostrar el diálogo
+        dialog.show();
+
+        // Leer en voz alta el mensaje
+        speakOut("Para usar la aplicación, coloca el billete frente a la cámara. Para continuar, presiona en cualquier lugar de la pantalla.");
+    }
+
+    private void startScanningProcess() {
+        // Aquí podrías iniciar el proceso de escaneo, si es necesario
+        // O simplemente continuar con el flujo normal de la aplicación
     }
 
     @Override
@@ -487,5 +527,39 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
             textToSpeech.stop();
             textToSpeech.shutdown();
         }
+    }
+
+
+
+    /*
+    *
+    * Pruebas
+    *
+    * */
+    public void pauseRecognition() {
+        // Pausar sonidos
+        if (scanningMediaPlayer.isPlaying()) {
+            scanningMediaPlayer.pause();
+        }
+        if (recognizedMediaPlayer.isPlaying()) {
+            recognizedMediaPlayer.pause();
+        }
+
+        // Pausar el reconocimiento
+        handler.removeCallbacks(scanningSoundRunnable);
+    }
+
+    public void resumeRecognition() {
+        // Reanudar sonidos
+        scanningMediaPlayer.start();
+
+        // Reanudar el reconocimiento
+        handler.postDelayed(scanningSoundRunnable, 1000); // Reanuda en 1 segundo
+    }
+
+    // Método para mostrar la ventana emergente
+    private void showDialog() {
+        CustomDialogFragment dialogFragment = new CustomDialogFragment(textToSpeech);
+        dialogFragment.show(getSupportFragmentManager(), "customDialog");
     }
 }

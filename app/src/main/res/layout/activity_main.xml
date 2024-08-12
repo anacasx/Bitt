@@ -46,4 +46,15 @@
         android:background="@android:color/transparent"
         android:padding="16dp"
         android:src="@android:drawable/ic_menu_preferences" />
+
+    <!-- Botón de información en la esquina superior izquierda -->
+    <ImageButton
+        android:id="@+id/info_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentStart="true"
+        android:background="@android:color/transparent"
+        android:padding="16dp"
+        android:src="@android:drawable/ic_dialog_info" />
 </RelativeLayout>

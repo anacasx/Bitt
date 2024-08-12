@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Este archivo define el layout para la ventana emergente (dialog fragment) en la aplicación.
+    La ventana se compone de un LinearLayout con un TextView centrado que muestra instrucciones
+    al usuario.
+-->
+
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:background="@android:color/white"
+    android:padding="20dp">
+
+    <!--
+        TextView que muestra el mensaje de instrucciones al usuario.
+        - El texto indica cómo utilizar la aplicación.
+        - La fuente del texto tiene un tamaño de 18sp y es de color negro.
+    -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Para usar la aplicación, coloca el billete frente a la cámara.\nPara continuar, presiona en cualquier lugar de la pantalla."
+        android:textSize="18sp"
+        android:textColor="@android:color/black" />
+
+</LinearLayout>
