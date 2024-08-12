@@ -291,20 +291,39 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
 
             //String[] classes = {"20aa", "20ar", "20ba", "20br", "50aa", "50ar", "50ba", "50br", "100aa", "100ar", "100ba", "100br", "200aa", "200ar", "200ba", "200br", "500aa", "500ar", "500ba", "500br", "1000ba", "1000br"}; // Clases de tu modelo
             //Clase nueva
+            //String[] classes = {"20ba", "20br", "50ba", "50br", "100ba", "100br", "200ba", "200br","500ba", "500br", "1000ba", "1000br"}; // Clases de tu modelo
+            String[] classes = {
+                    "200aa", "200ar", "200ba", "200br"
+            };
 
-            String[] classes = {"20-a", "20-b", "50-a", "50-b", "100-a", "100-b", "200-a", "200-b", "500-a", "500-b", "1000"}; // Clases de tu modelo
 
-            // Elimina la verificación del umbral de confianza
-            lastResult = classes[maxPos];
-            lastConfidence = maxConfidence;
-            lastDetectionTime = System.currentTimeMillis();
-            updateUI();
-            resetAfterInterval();
-            // Reproduce el sonido de reconocimiento
-            scanningMediaPlayer.pause();
-            recognizedMediaPlayer.start();
-            // Lee el resultado en voz alta
-            speakOut(lastResult);
+
+
+
+            float confidenceThreshold = 0.99f; // Umbral de confianza
+
+            // Verifica si la confianza es mayor al umbral y el resultado se mantiene durante 2 segundos
+            if (maxConfidence >= confidenceThreshold) {
+                if (!isRecognized) {
+                    isRecognized = true;
+                    recognitionStartTime = System.currentTimeMillis();
+                } else if (System.currentTimeMillis() - recognitionStartTime >= 2000) {
+                    //lastResult = classes[maxPos];
+                    lastResult = convertClassToValue(classes[maxPos]);
+                    lastConfidence = maxConfidence;
+                    lastDetectionTime = System.currentTimeMillis();
+                    updateUI();
+                    resetAfterInterval();
+                    // Reproduce el sonido de reconocimiento
+                    scanningMediaPlayer.pause();
+                    recognizedMediaPlayer.start();
+                    // Lee el resultado en voz alta
+                    speakOut(lastResult);
+                    isRecognized = false; // Resetea el flag después de reconocimiento
+                }
+            } else {
+                isRecognized = false;
+            }
 
             model.close();
         } catch (IOException e) {
@@ -314,29 +333,40 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
 
     // Convierte la clase detectada en un valor en pesos
 
-   /* private String convertClassToValue(String detectedClass) {
+    private String convertClassToValue(String detectedClass) {
         switch (detectedClass) {
-            case "20-a":
-            case "20-b":
+            /*case "20aa":
+            case "20ar":
+            case "20ba":
+            case "20br":
                 return "20 pesos";
-            case "50-a":
-            case "50-b":
+            case "50aa":
+            case "50ar":
+            case "50ba":
+            case "50br":
                 return "50 pesos";
-            case "100-a":
-            case "100-b":
-                return "100 pesos";
-            case "200-a":
-            case "200-b":
-                return "200 pesos";
-            case "500-a":
-            case "500-b":
+            case "100aa":
+            case "100ar":
+            case "100ba":
+            case "100br":
+                return "100 pesos";*/
+            case "200aa":
+            case "200ar":
+            case "200ba":
+            case "200br":
+                return "200 pesos";/*
+            case "500aa":
+            case "500ar":
+            case "500ba":
+            case "500br":
                 return "500 pesos";
-            case "1000":
-                return "1000 pesos";
+            case "1000ba":
+            case "1000br":
+                return "1000 pesos";*/
             default:
                 return "0";
         }
-    }*/
+    }
 
     // Actualiza la interfaz de usuario
     private void updateUI() {
